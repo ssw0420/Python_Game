@@ -1,16 +1,10 @@
-#game
 import pygame as pg
 import os
 import sys
 import time
 import math
 import random
-# cv
-import numpy as np
-import cv2
-import mediapipe as mp
-import matplotlib.pyplot as plt
-import threading
+
 
 ### default setting
 TITLE = "Rhythm Game"
@@ -54,23 +48,6 @@ RANK_F = "F"
 
 ### life setting
 LIFE = 100
-
-### cam setting
-mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
-mp_hands = mp.solutions.hands
-
-# 웹캠, 영상 파일의 경우 이것을 사용하세요.:
-cap = cv2.VideoCapture(0)
-w = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-a = w//3 
-hi = h//3
-
-hands = mp_hands.Hands(
-    model_complexity=0,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5)
 
 
 class Game:
@@ -128,20 +105,8 @@ class Game:
 
     def run(self):
         self.playing = True
-            
-            # 필요에 따라 성능 향상을 위해 이미지 작성을 불가능함으로 기본 설정합니다.
-            
-        while self.playing:
-            success, image = cap.read()
-            if not success:
-                print("카메라를 찾을 수 없습니다.")
-                # 동영상을 불러올 경우는 'continue' 대신 'break'를 사용합니다.
-                continue
-            image.flags.writeable = False
-            # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            image = cv2.flip(image,1)
-            self.results = hands.process(image)
 
+        while self.playing:
             self.Time = time.time() - self.start_time
             self.combo_time = self.Time + 1
             self.clock.tick(FPS)
@@ -150,7 +115,6 @@ class Game:
             self.update()
             self.random_create_note()
             self.draw()
-            cv2.imshow("or",image)
             pg.display.flip() ## 화면 전체를 업데이트
 
     def frame_set(self):
@@ -243,7 +207,7 @@ class Game:
             # 노트 표현
             pg.draw.rect(self.screen, WHITE, (WIDTH / 2 - WIDTH / 8.5, note_data[0] - HEIGHT / 100, WIDTH / 12.7, NOTE))
             # MISS 노트 삭제
-            if note_data[0] > (HEIGHT / 12.2) * 9:
+            if note_data[0] > (HEIGHT / 12.1) * 9:
                 self.last_combo = self.combo
                 self.miss_animation = 1
                 self.combo = 0 
@@ -257,7 +221,7 @@ class Game:
         for note_data in self.note2:
             note_data[0] = (HEIGHT / 12) * 9 + (self.Time - note_data[1]) * 350 * SPEED * (HEIGHT / 900)
             pg.draw.rect(self.screen, WHITE, (WIDTH / 2 - WIDTH / 25.8, note_data[0] - HEIGHT / 100, WIDTH / 12.7, NOTE))
-            if note_data[0] > (HEIGHT / 12.2) * 9:
+            if note_data[0] > (HEIGHT / 12.1) * 9:
                 self.last_combo = self.combo
                 self.miss_animation = 1
                 self.combo = 0 
@@ -271,7 +235,7 @@ class Game:
         for note_data in self.note3:
             note_data[0] = (HEIGHT / 12) * 9 + (self.Time - note_data[1]) * 350 * SPEED * (HEIGHT / 900)
             pg.draw.rect(self.screen, WHITE, (WIDTH / 2 + WIDTH / 25.6, note_data[0] - HEIGHT / 100, WIDTH / 12.7, NOTE))
-            if note_data[0] > (HEIGHT / 12.2) * 9:
+            if note_data[0] > (HEIGHT / 12.1) * 9:
                 self.last_combo = self.combo
                 self.miss_animation = 1
                 self.combo = 0 
@@ -397,51 +361,13 @@ class Game:
         self.game_tick = pg.time.get_ticks() - self.start_tick
 
     def events(self):
-        if self.results.multi_hand_landmarks is not None:
-
-            for res in self.results.multi_hand_landmarks:   
-                for j, lm in enumerate(res.landmark):
-                    if j==0:
-                        # print((lm.x*w, lm.y*h, lm.z))
-                        if 0 <= lm.x*w and a >= lm.x*w:
-                            if hi * 2 <= lm.y*h:
-                                self.keyset[0] = 1
-                                if len(self.note1) > 0:
-                                    self.rating_data()
-                                    self.rating(1)
-                                    if self.note1[0][0] > (HEIGHT / 15) * 9:
-                                        del self.note1[0]
-                            else:
-                                self.keyset[0] = 0
-                        elif a <lm.x*w and 2 * a >= lm.x*w:
-                            if hi * 2 <= lm.y*h:
-                                self.keyset[1] = 1
-                                if len(self.note2) > 0:
-                                    self.rating_data()
-                                    self.rating(2)
-                                    if self.note2[0][0] > (HEIGHT / 15) * 9:
-                                        del self.note2[0]
-                            else:
-                                self.keyset[1] = 0
-                        else:
-                            if hi * 2 <= lm.y*h:
-                                self.keyset[2] = 1
-                                if len(self.note3) > 0:
-                                    self.rating_data()
-                                    self.rating(3)
-                                    if self.note3[0][0] > (HEIGHT / 15) * 9:
-                                        del self.note3[0]
-                            else:
-                                self.keyset[2] = 0
-        else:
-            self.keyset[0],self.keyset[1],self.keyset[2] = 0,0,0
         for event in pg.event.get():
             # 게임 종료
             if event.type == pg.QUIT:
                 if self.playing:
                     self.playing, self.running = False, False
 
-                # 키 입력
+            # 키 입력
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_ESCAPE:
                     if self.playing:
@@ -476,64 +402,7 @@ class Game:
                 if event.key == pg.K_d:
                     self.keyset[2] = 0
 
-
-
-
-
-# class Camera:
-#     def __init__(self):
-#         ### camera setting
-#         self.mp_drawing = mp.solutions.drawing_utils
-#         self.mp_drawing_styles = mp.solutions.drawing_styles
-#         self.mp_hands = mp.solutions.hands
-
-#         # 웹캠, 영상 파일의 경우 이것을 사용하세요.:
-#         self.cap = cv2.VideoCapture(0)
-#         self.w = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-#         self.h = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-#         self.a = self.w//3 
-#         self.hi = self.h//3
-
-#         self.hands = self.mp_hands.Hands(
-#             model_complexity=0,
-#             min_detection_confidence=0.5,
-#             min_tracking_confidence=0.5)
-        
-#     def cam_run(self):
-#         while self.cap.isOpened():
-#             self.success, self.image = self.cap.read()
-#             if not self.success:
-#                 print("카메라를 찾을 수 없습니다.")
-#             # 동영상을 불러올 경우는 'continue' 대신 'break'를 사용합니다.
-#                 continue
-#             # 필요에 따라 성능 향상을 위해 이미지 작성을 불가능함으로 기본 설정합니다.
-#             self.image.flags.writeable = False
-#             self.image = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
-#             self.results = self.hands.process(self.image)
-#             game.run()
-
-#     def cam_key(self):
-#         if self.results.multi_hand_landmarks is not None:
-
-#             for res in self.results.multi_hand_landmarks:   
-#                 for j, lm in enumerate(res.landmark):
-#                     if j==0:
-#                         # print((lm.x*w, lm.y*h, lm.z))
-#                         if 0 <= lm.x*self.w and self.a >= lm.x*self.w:
-#                             if self.hi * 2 <= lm.y*self.h:
-#                                 print("a")
-                           
-#                         elif self.a <lm.x*self.w and 2 * self.a >= lm.x*self.w:
-#                             if self.hi * 2 <= lm.y*self.h:
-#                                 print("s")
-                      
-#                         else:
-#                             if self.hi * 2 <= lm.y*self.h:
-#                                 print("d")
-
-
 game = Game()
-# cam = Camera()
 
 while game.running:
     game.run()
