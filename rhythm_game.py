@@ -10,8 +10,6 @@ import numpy as np
 import cv2
 import mediapipe as mp
 import matplotlib.pyplot as plt
-import threading
-
 ### default setting
 TITLE = "Rhythm Game"
 WIDTH = 1600
@@ -216,7 +214,7 @@ class Game:
     # 노트의 Y축 좌표 값과 생성 시간을 각 노트별 배열에 추가
     def set_note(self, note):
         if note == 1:
-            self.noteY = 0
+            self.noteY = 100
             self.note_time = self.Time + SPEED
             self.note1.append([self.noteY, self.note_time])
         elif note == 2:
