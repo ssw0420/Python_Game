@@ -12,6 +12,9 @@ WIDTH = 1600
 HEIGHT = WIDTH * (9 / 16)
 FPS = 60
 
+# 프레임 간격 (16ms = 1000ms / 60)
+FRAME_INTERVAL = 16
+
 ### color setting
 WHITE = (255, 255, 255)
 GREEN = (50, 205, 50)
@@ -22,11 +25,45 @@ GRAY = (115, 115, 115)
 BLACK = (0, 0, 0)
 # ALPHA_MAX = 255
 
-### note setting
-NOTE = (HEIGHT / 50)
+### play setting
+PLAY_X = WIDTH / 2 - WIDTH / 3
+PLAY_Y = -int(WIDTH / 100)
+PLAY_WIDTH = WIDTH / 1.5
+PLAY_HEIGHT = HEIGHT + int(WIDTH / 50)
+PLAY_COLOR = (130, 105, 236)
+PLAY_LINE = int(WIDTH / 200)
 
-### time setting
-SPEED = 2
+### note setting
+NOTE_HEIGHT = (HEIGHT / 30)
+NOTE_WIDTH = WIDTH / 4.61
+NOTE_FIRST_X = PLAY_X + PLAY_LINE
+NOTE_SECOND_X = NOTE_FIRST_X + NOTE_WIDTH + 5
+NOTE_THIRD_X = NOTE_SECOND_X + NOTE_WIDTH + 5
+NOTE_COLOR = (120, 50, 200)
+
+### hit setting
+HIT_Y = (HEIGHT / 12) * 10
+HIT_HEIGHT = NOTE_HEIGHT + 30
+HIT_LINE = int(WIDTH / 400)
+HIT_COLOR = (50, 50, 50)
+PLAY_COLOR_HEIGHT = PLAY_HEIGHT - HIT_HEIGHT
+
+### key setting
+KEY_EFFECT_WIDTH = WIDTH / 4.61
+KEY_EFFECT_HEIGHT = HEIGHT / 30
+KEY_EFFECT_FIRST_X = PLAY_X + PLAY_LINE
+KEY_EFFECT_SECOND_X = KEY_EFFECT_FIRST_X + KEY_EFFECT_WIDTH + 5
+KEY_EFFECT_THIRD_X = KEY_EFFECT_SECOND_X + KEY_EFFECT_WIDTH + 5
+KEY_EFFECT_Y = HIT_Y + 50
+
+### font setting
+FONT_Y = (HEIGHT / 12)
+
+
+NOTE_END_Y = HEIGHT
+
+### speed, time setting
+SPEED = 5
 
 ### rating setting
 PERFECT = "PERFECT"
@@ -34,6 +71,18 @@ GREAT = "GREAT"
 GOOD = "GOOD"
 BAD = "BAD"
 MISS = "MISS"
+
+### hit line setting
+HIT_END_LINE = HIT_Y + 40 + HIT_HEIGHT + 30
+PERFECT_HIT_LINE = HIT_Y
+GREAT_HIT_LINE = HIT_Y * (0.85)
+GOOD_HIT_LINE = HIT_Y * (0.83)
+BAD_HIT_LINE = HIT_Y * (0.8)
+print("END", HIT_END_LINE)
+print("PERFECT", PERFECT_HIT_LINE)
+print("GREAT", GREAT_HIT_LINE)
+print("GOOD",GOOD_HIT_LINE)
+print("BAD",BAD_HIT_LINE)
 
 ### score setting
 SCORE = 0
@@ -98,6 +147,12 @@ class Game:
         self.ingame_font_combo = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(WIDTH / 38))
         self.ingame_font_miss = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(WIDTH / 38))
 
+        ### background setting
+        self.background = pg.Surface((WIDTH, HEIGHT))           #white background
+        self.background = self.background.convert()
+        self.background.fill(BLACK)
+        self.screen.blit(self.background, (0,0))
+
 
         # self.song_select = 1    #select song
         # self.load_date()        #data loading
@@ -109,7 +164,7 @@ class Game:
         while self.playing:
             self.Time = time.time() - self.start_time
             self.combo_time = self.Time + 1
-            self.clock.tick(FPS)
+            self.dt = self.clock.tick(FPS)
             self.events()
             self.frame_set()
             self.update()
@@ -141,59 +196,63 @@ class Game:
         self.miss_animation += (4 - self.miss_animation) / (14 * FPS / self.frame)
 
     def draw(self):
-        self.background = pg.Surface((WIDTH, HEIGHT))           #white background
-        self.background = self.background.convert()
-        self.background.fill(BLACK)
-        self.screen.blit(self.background, (0,0))
         self.draw_screen()
-        self.draw_key()
+        # self.draw_key()
         self.draw_note()
         self.draw_rate()
         pg.display.update() ## 화면 일부 또는 전체를 업데이트
 
-    def draw_screen(self):
-        
-        # 플레이 화면 구성
-        pg.draw.rect(self.screen, BLACK, (WIDTH / 2 - WIDTH / 8, -int(WIDTH / 100), WIDTH / 4, HEIGHT + int(WIDTH / 50)))
+    def draw_screen(self):        
+        # 플레이 전체 화면
+        pg.draw.rect(self.screen, BLACK, (PLAY_X, PLAY_Y, PLAY_WIDTH, PLAY_COLOR_HEIGHT))
 
-        # 흰색 직사각형 테두리
-        pg.draw.rect(self.screen, WHITE, (WIDTH / 2 - WIDTH / 8, -int(WIDTH / 100), WIDTH / 4, HEIGHT + int(WIDTH / 50)), int(WIDTH / 200))
+        # 플레이 화면 구성
+        pg.draw.rect(self.screen, BLACK, (PLAY_X, HIT_Y + 40 + HIT_HEIGHT + 30, PLAY_WIDTH, HEIGHT / 2))
+        # 노트 판정 선
+        pg.draw.rect(self.screen, HIT_COLOR, (PLAY_X, HIT_Y + 40, PLAY_WIDTH, HIT_HEIGHT + 30), 0)
+
+        # 플레이 양측 끝 선
+        pg.draw.rect(self.screen, PLAY_COLOR, (PLAY_X, PLAY_Y, PLAY_WIDTH, PLAY_HEIGHT), HIT_LINE) 
+
 
         # [A, S, D] 키 입력시 화면 구성
         # 색상 미 입력시 자동으로 흰색 직사각형 생성
-        for i in range(7):
+        # 키 입력시 이펙트 생성
+        for i in range(5):
             i += 1
-            pg.draw.rect(self.screen, (200 - ((200 / 7) * i), 200 - ((200 / 7) * i), 200 - ((200 / 7) * i)), (WIDTH / 2 - WIDTH / 8.5 + WIDTH / 32 - (WIDTH / 32) * self.keys[0], (HEIGHT / 12) * 9 - (HEIGHT / 30) * self.keys[0] * i, WIDTH / 12.7 * self.keys[0], (HEIGHT / 35) / i))
+            pg.draw.rect(self.screen, (130 - (6 * i), 105 - (15 * i), 235 - (25 * i)), (KEY_EFFECT_FIRST_X, KEY_EFFECT_Y + 100 - (HEIGHT / 30) * i * self.keys[0], KEY_EFFECT_WIDTH, KEY_EFFECT_HEIGHT / i * self.keys[0]))
         
-        for i in range(7):
+        for i in range(5):
             i += 1
-            pg.draw.rect(self.screen, (200 - ((200 / 7) * i), 200 - ((200 / 7) * i), 200 - ((200 / 7) * i)), (WIDTH / 2 - WIDTH / 25.8 + WIDTH / 32 - (WIDTH / 32) * self.keys[1], (HEIGHT / 12) * 9 - (HEIGHT / 30) * self.keys[1] * i, WIDTH / 12.7 * self.keys[1], (HEIGHT / 35) / i))
+            pg.draw.rect(self.screen, (130 - (6 * i), 105 - (15 * i), 235 - (25 * i)), (KEY_EFFECT_SECOND_X, KEY_EFFECT_Y + 100 - (HEIGHT / 30) * i * self.keys[1], KEY_EFFECT_WIDTH, KEY_EFFECT_HEIGHT / i * self.keys[1]))
         
-        for i in range(7):
+        for i in range(5):
             i += 1
-            pg.draw.rect(self.screen, (200 - ((200 / 7) * i), 200 - ((200 / 7) * i), 200 - ((200 / 7) * i)), (WIDTH / 2 + WIDTH / 14.1 - (WIDTH / 32) * self.keys[2], (HEIGHT / 12) * 9 - (HEIGHT / 30) * self.keys[2] * i, WIDTH / 12.7 * self.keys[2], (HEIGHT / 35) / i))
+            pg.draw.rect(self.screen, (130 - (6 * i), 105 - (15 * i), 235 - (25 * i)), (KEY_EFFECT_THIRD_X, KEY_EFFECT_Y + 100 - (HEIGHT / 30) * i * self.keys[2], KEY_EFFECT_WIDTH, KEY_EFFECT_HEIGHT / i * self.keys[2]))
 
-        # 노트 판정 선
-        pg.draw.rect(self.screen, BLACK, (WIDTH / 2 - WIDTH / 8, (HEIGHT / 12) * 9, WIDTH / 4, HEIGHT /2))
-        pg.draw.rect(self.screen, WHITE, (WIDTH / 2 - WIDTH / 8, (HEIGHT / 12) * 9, WIDTH / 4, HEIGHT), int(HEIGHT / 100))
+        # 키 입력 선
+        # pg.draw.rect(self.screen, BLACK, (PLAY_X, HIT_Y, PLAY_WIDTH, HEIGHT / 2))
+        # pg.draw.rect(self.screen, WHITE, (PLAY_X, HIT_Y, PLAY_WIDTH, HEIGHT / 2), HIT_LINE)
+
 
     # 노트의 Y축 좌표 값과 생성 시간을 각 노트별 배열에 추가
     def set_note(self, note):
         if note == 1:
             self.noteY = 0
-            self.note_time = self.Time + SPEED
+            self.note_time = self.Time
+            # 1번 줄의 모든 노트의 정보를 가지는 배열 : note1
             self.note1.append([self.noteY, self.note_time])
         elif note == 2:
             self.noteY = 0
-            self.note_time = self.Time + SPEED
+            self.note_time = self.Time
             self.note2.append([self.noteY, self.note_time])
         elif note == 3:
             self.noteY = 0
-            self.note_time = self.Time + SPEED
+            self.note_time = self.Time
             self.note3.append([self.noteY, self.note_time])
 
     def random_create_note(self):
-        if self.Time > 0.3 * self.create_note_time: # 노트 생성 주기
+        if self.Time > 0.5 * self.create_note_time: # 노트 생성 주기
             self.create_note_time += 1
             while self.randnote == self.temp_randnote:
                 self.randnote = random.randint(1,3)
@@ -201,16 +260,20 @@ class Game:
             self.temp_randnote = self.randnote
 
     def draw_note(self):
+        self.speed_per_second = SPEED * (self.dt / 10)
         for note_data in self.note1:
             # 노트가 내려오도록 함
-            note_data[0] = (HEIGHT / 12) * 9 + (self.Time - note_data[1]) * 350 * SPEED * (HEIGHT / 900)
+            # 각 노트별 Y 좌표 : note_data[0] -> 이를 변경시킴으로써 note의 위치를 이동시킴
+            # note_data[0] = (self.Time - note_data[1]) * 350 * SPEED * (HEIGHT / 900)
+            note_data[0] += self.speed_per_second
             # 노트 표현
-            pg.draw.rect(self.screen, WHITE, (WIDTH / 2 - WIDTH / 8.5, note_data[0] - HEIGHT / 100, WIDTH / 12.7, NOTE))
+            self.note1_rect = pg.draw.rect(self.screen, NOTE_COLOR, (NOTE_FIRST_X, note_data[0], NOTE_WIDTH, NOTE_HEIGHT))
+            pg.display.update(self.note1_rect)
             # MISS 노트 삭제
-            if note_data[0] > (HEIGHT / 12.1) * 9:
+            if note_data[0] > NOTE_END_Y:
                 self.last_combo = self.combo
                 self.miss_animation = 1
-                self.combo = 0 
+                self.combo = 0
                 self.combo_effect1 = 0.2
                 self.combo_time = self.Time + 1
                 self.combo_effect2 = 1.3
@@ -219,12 +282,15 @@ class Game:
                 self.note1.remove(note_data)
 
         for note_data in self.note2:
-            note_data[0] = (HEIGHT / 12) * 9 + (self.Time - note_data[1]) * 350 * SPEED * (HEIGHT / 900)
-            pg.draw.rect(self.screen, WHITE, (WIDTH / 2 - WIDTH / 25.8, note_data[0] - HEIGHT / 100, WIDTH / 12.7, NOTE))
-            if note_data[0] > (HEIGHT / 12.1) * 9:
+            # HEIGHT -> 노트 도달 위치
+            # note_data[0] += (0.5 * FPS)
+            note_data[0] += self.speed_per_second
+            self.note2_rect = pg.draw.rect(self.screen, NOTE_COLOR, (NOTE_SECOND_X, note_data[0], NOTE_WIDTH, NOTE_HEIGHT))
+            pg.display.update(self.note2_rect)
+            if note_data[0] > NOTE_END_Y:
                 self.last_combo = self.combo
                 self.miss_animation = 1
-                self.combo = 0 
+                self.combo = 0
                 self.combo_effect1 = 0.2
                 self.combo_time = self.Time + 1
                 self.combo_effect2 = 1.3
@@ -233,12 +299,13 @@ class Game:
                 self.note2.remove(note_data)
 
         for note_data in self.note3:
-            note_data[0] = (HEIGHT / 12) * 9 + (self.Time - note_data[1]) * 350 * SPEED * (HEIGHT / 900)
-            pg.draw.rect(self.screen, WHITE, (WIDTH / 2 + WIDTH / 25.6, note_data[0] - HEIGHT / 100, WIDTH / 12.7, NOTE))
-            if note_data[0] > (HEIGHT / 12.1) * 9:
+            note_data[0] += self.speed_per_second
+            self.note3_rect = pg.draw.rect(self.screen, NOTE_COLOR, (NOTE_THIRD_X, note_data[0], NOTE_WIDTH, NOTE_HEIGHT))
+            pg.display.update(self.note3_rect)
+            if note_data[0] > NOTE_END_Y:
                 self.last_combo = self.combo
                 self.miss_animation = 1
-                self.combo = 0 
+                self.combo = 0
                 self.combo_effect1 = 0.2
                 self.combo_time = self.Time + 1
                 self.combo_effect2 = 1.3
@@ -246,23 +313,25 @@ class Game:
                 self.miss_count += 1
                 self.note3.remove(note_data)
 
-    def draw_key(self):
-        pg.draw.rect(self.screen, (255 - 100 * self.keys[0],255 - 100 * self.keys[0], 255 - 100 * self.keys[0]), (WIDTH / 2 - WIDTH / 9.7, (HEIGHT / 24) * 19 + (HEIGHT / 48) * self.keys[0], WIDTH / 20, HEIGHT / 8), int(HEIGHT / 150))
-        pg.draw.rect(self.screen, (255 - 100 * self.keys[1],255 - 100 * self.keys[1], 255 - 100 * self.keys[1]), (WIDTH / 2 - WIDTH / 42, (HEIGHT / 24) * 19 + (HEIGHT / 48) * self.keys[1], WIDTH / 20, HEIGHT / 8), int(HEIGHT / 150))
-        pg.draw.rect(self.screen, (255 - 100 * self.keys[2],255 - 100 * self.keys[2], 255 - 100 * self.keys[2]), (WIDTH / 2 + WIDTH / 18.5, (HEIGHT / 24) * 19 + (HEIGHT / 48) * self.keys[2], WIDTH / 20, HEIGHT / 8), int(HEIGHT / 150))
+# 임시 잠금
+    # def draw_key(self):
+    #     pg.draw.rect(self.screen, (255 - 100 * self.keys[0],255 - 100 * self.keys[0], 255 - 100 * self.keys[0]), (WIDTH / 2 - WIDTH / 9.7, (HEIGHT / 24) * 19 + (HEIGHT / 48) * self.keys[0], WIDTH / 20, HEIGHT / 8), int(HEIGHT / 150))
+    #     pg.draw.rect(self.screen, (255 - 100 * self.keys[1],255 - 100 * self.keys[1], 255 - 100 * self.keys[1]), (WIDTH / 2 - WIDTH / 42, (HEIGHT / 24) * 19 + (HEIGHT / 48) * self.keys[1], WIDTH / 20, HEIGHT / 8), int(HEIGHT / 150))
+    #     pg.draw.rect(self.screen, (255 - 100 * self.keys[2],255 - 100 * self.keys[2], 255 - 100 * self.keys[2]), (WIDTH / 2 + WIDTH / 18.5, (HEIGHT / 24) * 19 + (HEIGHT / 48) * self.keys[2], WIDTH / 20, HEIGHT / 8), int(HEIGHT / 150))
 
-        # pg.draw.circle(self.screen, (150, 150, 150), (WIDTH / 2, (HEIGHT / 24) * 21), (WIDTH / 20), int(HEIGHT / 200))
-        # pg.draw.line(self.screen, (150, 150, 150), (WIDTH / 2 - math.sin(self.spin) * 25 * (WIDTH / 1600), (HEIGHT / 24) * 21 - math.cos(self.spin) * 25 * (WIDTH / 1600)), (WIDTH / 2 + math.sin(self.spin) * 25 * (WIDTH / 1600), (HEIGHT / 24) * 21 + math.cos(self.spin) * 25 * (WIDTH / 1600)), int(WIDTH / 400))
-        # self.spin = self.Time * -2
+    #     # pg.draw.circle(self.screen, (150, 150, 150), (WIDTH / 2, (HEIGHT / 24) * 21), (WIDTH / 20), int(HEIGHT / 200))
+    #     # pg.draw.line(self.screen, (150, 150, 150), (WIDTH / 2 - math.sin(self.spin) * 25 * (WIDTH / 1600), (HEIGHT / 24) * 21 - math.cos(self.spin) * 25 * (WIDTH / 1600)), (WIDTH / 2 + math.sin(self.spin) * 25 * (WIDTH / 1600), (HEIGHT / 24) * 21 + math.cos(self.spin) * 25 * (WIDTH / 1600)), int(WIDTH / 400))
+    #     # self.spin = self.Time * -2
 
 
-        # pg.draw.rect(self.screen, (255 - 100 * self.keys[1], 255 - 100 * self.keys[1], 255 - 100 * self.keys[1]), (WIDTH / 2 - WIDTH / 50, (HEIGHT / 48) * 39 + (HEIGHT / 48) * self.keys[1], WIDTH / 27, HEIGHT / 8))
-        # pg.draw.rect(self.screen, (0,0, 0), (WIDTH / 2 - WIDTH / 50, (HEIGHT / 48) * 43 + (HEIGHT / 48) * (self.keys[1] * 1.2), WIDTH / 27, HEIGHT / 64), int(HEIGHT / 150))
-        # pg.draw.rect(self.screen, (50,50, 50), (WIDTH / 2 - WIDTH / 50, (HEIGHT / 48) * 39 + (HEIGHT / 48) * self.keys[1], WIDTH / 27, HEIGHT / 8), int(HEIGHT / 150))
+    #     # pg.draw.rect(self.screen, (255 - 100 * self.keys[1], 255 - 100 * self.keys[1], 255 - 100 * self.keys[1]), (WIDTH / 2 - WIDTH / 50, (HEIGHT / 48) * 39 + (HEIGHT / 48) * self.keys[1], WIDTH / 27, HEIGHT / 8))
+    #     # pg.draw.rect(self.screen, (0,0, 0), (WIDTH / 2 - WIDTH / 50, (HEIGHT / 48) * 43 + (HEIGHT / 48) * (self.keys[1] * 1.2), WIDTH / 27, HEIGHT / 64), int(HEIGHT / 150))
+    #     # pg.draw.rect(self.screen, (50,50, 50), (WIDTH / 2 - WIDTH / 50, (HEIGHT / 48) * 39 + (HEIGHT / 48) * self.keys[1], WIDTH / 27, HEIGHT / 8), int(HEIGHT / 150))
 
-        # pg.draw.rect(self.screen, (255 - 100 * self.keys[2], 255 - 100 * self.keys[2], 255 - 100 * self.keys[2]), (WIDTH / 2 + WIDTH / 58, (HEIGHT / 48) * 39 + (HEIGHT / 48) * self.keys[2], WIDTH / 27, HEIGHT / 8))
-        # pg.draw.rect(self.screen, (0,0, 0), (WIDTH / 2 + WIDTH / 58, (HEIGHT / 48) * 43 + (HEIGHT / 48) * (self.keys[2] * 1.2), WIDTH / 27, HEIGHT / 64), int(HEIGHT / 150))
-        # pg.draw.rect(self.screen, (50,50, 50), (WIDTH / 2 + WIDTH / 58, (HEIGHT / 48) * 39 + (HEIGHT / 48) * self.keys[2], WIDTH / 27, HEIGHT / 8), int(HEIGHT / 150))
+    #     # pg.draw.rect(self.screen, (255 - 100 * self.keys[2], 255 - 100 * self.keys[2], 255 - 100 * self.keys[2]), (WIDTH / 2 + WIDTH / 58, (HEIGHT / 48) * 39 + (HEIGHT / 48) * self.keys[2], WIDTH / 27, HEIGHT / 8))
+    #     # pg.draw.rect(self.screen, (0,0, 0), (WIDTH / 2 + WIDTH / 58, (HEIGHT / 48) * 43 + (HEIGHT / 48) * (self.keys[2] * 1.2), WIDTH / 27, HEIGHT / 64), int(HEIGHT / 150))
+    #     # pg.draw.rect(self.screen, (50,50, 50), (WIDTH / 2 + WIDTH / 58, (HEIGHT / 48) * 39 + (HEIGHT / 48) * self.keys[2], WIDTH / 27, HEIGHT / 8), int(HEIGHT / 150))
+
 
     def draw_rate(self):
         self.ingame_font_combo = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int((WIDTH / 38) * self.combo_effect2))
@@ -281,17 +350,13 @@ class Game:
         # self.miss_text = pg.transform.scale(self.miss_text, (int(WIDTH / 110 * len(self.rate) * self.combo_effect2), int(WIDTH / 58 * self.combo_effect1 * self.combo_effect2)))
         self.rate_text = self.ingame_font_rate.render(str(self.rate), False, WHITE)
         if (self.rate == PERFECT):
-            self.rate_text = self.ingame_font_rate.render(str(PERFECT), False, BLUE)
-            # self.rate_text = pg.transform.scale(self.perfect_text, (int(WIDTH / 110 * len(self.rate) * self.combo_effect2), int(WIDTH / 58 * self.combo_effect1 * self.combo_effect2)))
+            self.rate_text = self.ingame_font_rate.render(str(PERFECT), False, BLUE)     
         elif (self.rate == GREAT):
             self.rate_text = self.ingame_font_rate.render(str(GREAT),False, GREEN)
-            # self.rate_text = pg.transform.scale(self.great_text, (int(WIDTH / 110 * len(self.rate) * self.combo_effect2), int(WIDTH / 58 * self.combo_effect1 * self.combo_effect2)))
         elif (self.rate == GOOD):
             self.rate_text = self.ingame_font_rate.render(str(GOOD), False, YELLOW)
-            # self.rate_text = pg.transform.scale(self.good_text, (int(WIDTH / 110 * len(self.rate) * self.combo_effect2), int(WIDTH / 58 * self.combo_effect1 * self.combo_effect2)))
         elif (self.rate == BAD):
             self.rate_text = self.ingame_font_rate.render(str(BAD), False, RED)
-            # self.rate_text = pg.transform.scale(self.bad_text, (int(WIDTH / 110 * len(self.rate) * self.combo_effect2), int(WIDTH / 58 * self.combo_effect1 * self.combo_effect2)))
         elif (self.rate == MISS):
             self.rate_text = self.ingame_font_rate.render(str(MISS), False, GRAY)
             # self.rate_text = pg.transform.scale(self.miss_text, (int(WIDTH / 110 * len(self.rate) * self.combo_effect2), int(WIDTH / 58 * self.combo_effect1 * self.combo_effect2)))
@@ -299,60 +364,149 @@ class Game:
 
         self.miss_text.set_alpha(255 - (255 / 4) * self.miss_animation)
         if self.combo != 0:
-            self.screen.blit(self.combo_text, (WIDTH / 2 - self.combo_text.get_width() / 2, (HEIGHT / 12) * 4 - self.combo_text.get_height() / 2))
+            self.screen.blit(self.combo_text, (WIDTH / 2 - self.combo_text.get_width() / 2, FONT_Y * 4 - self.combo_text.get_height() / 2))
         self.rate_text = pg.transform.scale(self.rate_text, (int(WIDTH / 110 * len(self.rate) * self.combo_effect2), int(WIDTH / 58 * self.combo_effect1 * self.combo_effect2)))
         if self.miss_count == 1:
-            self.screen.blit(self.miss_text, (WIDTH / 2 - self.miss_text.get_width() / 2, (HEIGHT / 12) * 4 - self.miss_text.get_height() / 2))
+            self.screen.blit(self.miss_text, (WIDTH / 2 - self.miss_text.get_width() / 2, FONT_Y * 4 - self.miss_text.get_height() / 2))
 
-        self.screen.blit(self.rate_text, (WIDTH / 2 - self.rate_text.get_width() / 2, (HEIGHT / 12) * 8 - self.rate_text.get_height() / 2))
+        self.screen.blit(self.rate_text, (WIDTH / 2 - self.rate_text.get_width() / 2, FONT_Y * 8 - self.rate_text.get_height() / 2))
 
 
     def rating(self, n):
-        if abs(self.Time - self.rate_data[n - 1]) < 2 and abs(self.Time - self.rate_data[n - 1]) >= 0.7:
-            self.miss_count = 1
-            self.rate = ""
+        if n == 1:
+            if self.rate_data[n - 1] >= BAD_HIT_LINE and self.rate_data[n - 1] < GOOD_HIT_LINE:
+                self.combo_effect1 = 0.2
+                self.combo_time = self.Time + 1
+                self.combo_effect2 = 1.3
+                self.rate = BAD
+                self.miss_count = 0
+                self.combo += 1
+                del self.note1[0]
+                
 
-        if abs(self.Time - self.rate_data[n - 1]) < 0.3 and abs(self.Time - self.rate_data[n - 1]) >= 0.2:
-            self.combo_effect1 = 0.2
-            self.combo_time = self.Time + 1
-            self.combo_effect2 = 1.3
-            self.rate = BAD
-            self.miss_count = 0
-            self.combo += 1
+            elif self.rate_data[n - 1] >= GOOD_HIT_LINE and self.rate_data[n - 1] < GREAT_HIT_LINE:
+                self.combo_effect1 = 0.2
+                self.combo_time = self.Time + 1
+                self.combo_effect2 = 1.3
+                self.rate = GOOD
+                self.miss_count = 0
+                self.combo += 1
+                del self.note1[0]
+
+            elif self.rate_data[n - 1] >= GREAT_HIT_LINE and self.rate_data[n - 1] < PERFECT_HIT_LINE:
+                self.combo_effect1 = 0.2
+                self.combo_time = self.Time + 1
+                self.combo_effect2 = 1.3
+                self.rate = GREAT
+                self.miss_count = 0
+                self.combo += 1
+                del self.note1[0]
+
+            
+            elif self.rate_data[n - 1] >= PERFECT_HIT_LINE and self.rate_data[n - 1] < HIT_END_LINE:
+                self.combo_effect1 = 0.2
+                self.combo_time = self.Time + 1
+                self.combo_effect2 = 1.3
+                self.rate = PERFECT
+                self.miss_count = 0
+                self.combo += 1
+                del self.note1[0]
+
+        elif n == 2:
+            if self.rate_data[n - 1] >= BAD_HIT_LINE and self.rate_data[n - 1] < GOOD_HIT_LINE:
+                self.combo_effect1 = 0.2
+                self.combo_time = self.Time + 1
+                self.combo_effect2 = 1.3
+                self.rate = BAD
+                self.miss_count = 0
+                self.combo += 1
+                del self.note2[0]
+                
+
+            elif self.rate_data[n - 1] >= GOOD_HIT_LINE and self.rate_data[n - 1] < GREAT_HIT_LINE:
+                self.combo_effect1 = 0.2
+                self.combo_time = self.Time + 1
+                self.combo_effect2 = 1.3
+                self.rate = GOOD
+                self.miss_count = 0
+                self.combo += 1
+                del self.note2[0]
+
+            elif self.rate_data[n - 1] >= GREAT_HIT_LINE and self.rate_data[n - 1] < PERFECT_HIT_LINE:
+                self.combo_effect1 = 0.2
+                self.combo_time = self.Time + 1
+                self.combo_effect2 = 1.3
+                self.rate = GREAT
+                self.miss_count = 0
+                self.combo += 1
+                del self.note2[0]
+
+            
+            elif self.rate_data[n - 1] >= PERFECT_HIT_LINE and self.rate_data[n - 1] < HIT_END_LINE:
+                self.combo_effect1 = 0.2
+                self.combo_time = self.Time + 1
+                self.combo_effect2 = 1.3
+                self.rate = PERFECT
+                self.miss_count = 0
+                self.combo += 1
+                del self.note2[0]
+
+        elif n == 3:
+            if self.rate_data[n - 1] >= BAD_HIT_LINE and self.rate_data[n - 1] < GOOD_HIT_LINE:
+                self.combo_effect1 = 0.2
+                self.combo_time = self.Time + 1
+                self.combo_effect2 = 1.3
+                self.rate = BAD
+                self.miss_count = 0
+                self.combo += 1
+                del self.note3[0]
+                
+
+            elif self.rate_data[n - 1] >= GOOD_HIT_LINE and self.rate_data[n - 1] < GREAT_HIT_LINE:
+                self.combo_effect1 = 0.2
+                self.combo_time = self.Time + 1
+                self.combo_effect2 = 1.3
+                self.rate = GOOD
+                self.miss_count = 0
+                self.combo += 1
+                del self.note3[0]
+
+            elif self.rate_data[n - 1] >= GREAT_HIT_LINE and self.rate_data[n - 1] < PERFECT_HIT_LINE:
+                self.combo_effect1 = 0.2
+                self.combo_time = self.Time + 1
+                self.combo_effect2 = 1.3
+                self.rate = GREAT
+                self.miss_count = 0
+                self.combo += 1
+                del self.note3[0]
+
+            
+            elif self.rate_data[n - 1] >= PERFECT_HIT_LINE and self.rate_data[n - 1] < HIT_END_LINE:
+                self.combo_effect1 = 0.2
+                self.combo_time = self.Time + 1
+                self.combo_effect2 = 1.3
+                self.rate = PERFECT
+                self.miss_count = 0
+                self.combo += 1
+                del self.note3[0]
             
 
-        if abs(self.Time - self.rate_data[n - 1]) < 0.2 and abs(self.Time - self.rate_data[n - 1]) >= 0.15:
-            self.combo_effect1 = 0.2
-            self.combo_time = self.Time + 1
-            self.combo_effect2 = 1.3
-            self.rate = GOOD
-            self.miss_count = 0
-            self.combo += 1
-
-        if abs(self.Time - self.rate_data[n - 1]) < 0.15 and abs(self.Time - self.rate_data[n - 1]) >= 0.1:
-            self.combo_effect1 = 0.2
-            self.combo_time = self.Time + 1
-            self.combo_effect2 = 1.3
-            self.rate = GREAT
-            self.miss_count = 0
-            self.combo += 1
-
-        if abs(self.Time - self.rate_data[n - 1]) < 0.1 and abs(self.Time - self.rate_data[n - 1]) >= 0:
-            self.combo_effect1 = 0.2
-            self.combo_time = self.Time + 1
-            self.combo_effect2 = 1.3
-            self.rate = PERFECT
-            self.miss_count = 0
-            self.combo += 1
+        # if abs(self.Time - self.rate_data[n - 1]) < 0.1 and abs(self.Time - self.rate_data[n - 1]) >= 0:
+        #     self.combo_effect1 = 0.2
+        #     self.combo_time = self.Time + 1
+        #     self.combo_effect2 = 1.3
+        #     self.rate = PERFECT
+        #     self.miss_count = 0
+        #     self.combo += 1
 
 
     def rating_data(self):
         if len(self.note1) > 0:
-            self.rate_data[0] = self.note1[0][1]
+            self.rate_data[0] = self.note1[0][0]
         if len(self.note2) > 0:
-            self.rate_data[1] = self.note2[0][1]
+            self.rate_data[1] = self.note2[0][0]
         if len(self.note3) > 0:
-            self.rate_data[2] = self.note3[0][1]
+            self.rate_data[2] = self.note3[0][0]
 
         
 
@@ -376,23 +530,20 @@ class Game:
                     self.keyset[0] = 1
                     if len(self.note1) > 0:
                         self.rating_data()
-                        self.rating(1)
-                        if self.note1[0][0] > (HEIGHT / 15) * 9:
-                            del self.note1[0]
+                        if self.note1[0][0] > BAD_HIT_LINE:
+                            self.rating(1)
                 if event.key == pg.K_s:
                     self.keyset[1] = 1
                     if len(self.note2) > 0:
                         self.rating_data()
-                        self.rating(2)
-                        if self.note2[0][0] > (HEIGHT / 15) * 9:
-                            del self.note2[0]
+                        if self.note2[0][0] > BAD_HIT_LINE:
+                            self.rating(2)
                 if event.key == pg.K_d:
                     self.keyset[2] = 1
                     if len(self.note3) > 0:
                         self.rating_data()
-                        self.rating(3)
-                        if self.note3[0][0] > (HEIGHT / 15) * 9:
-                            del self.note3[0]
+                        if self.note3[0][0] > BAD_HIT_LINE:
+                            self.rating(3)
 
             if event.type == pg.KEYUP:
                 if event.key == pg.K_a:
