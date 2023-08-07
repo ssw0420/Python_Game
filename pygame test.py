@@ -1,9 +1,16 @@
+# game
 import pygame as pg
 import os
 import sys
 import time
 import math
 import random
+
+# cv
+import numpy as np
+import cv2
+import mediapipe as mp
+import matplotlib.pyplot as plt
 
 
 ### default setting
@@ -28,7 +35,7 @@ BLACK = (0, 0, 0)
 ### play setting
 PLAY_X = WIDTH / 2 - WIDTH / 3
 PLAY_Y = -int(WIDTH / 100)
-PLAY_WIDTH = WIDTH / 1.5
+PLAY_WIDTH = WIDTH / 1.505
 PLAY_HEIGHT = HEIGHT + int(WIDTH / 50)
 PLAY_COLOR = (130, 105, 236)
 PLAY_LINE = int(WIDTH / 200)
@@ -37,9 +44,9 @@ PLAY_LINE = int(WIDTH / 200)
 NOTE_HEIGHT = (HEIGHT / 30)
 NOTE_WIDTH = WIDTH / 4.61
 NOTE_FIRST_X = PLAY_X + PLAY_LINE
-NOTE_SECOND_X = NOTE_FIRST_X + NOTE_WIDTH + 5
-NOTE_THIRD_X = NOTE_SECOND_X + NOTE_WIDTH + 5
-NOTE_COLOR = (120, 50, 200)
+NOTE_SECOND_X = NOTE_FIRST_X + NOTE_WIDTH + 3
+NOTE_THIRD_X = NOTE_SECOND_X + NOTE_WIDTH + 3
+NOTE_COLOR = (120, 150, 200)
 
 ### hit setting
 HIT_Y = (HEIGHT / 12) * 10
@@ -50,7 +57,7 @@ PLAY_COLOR_HEIGHT = PLAY_HEIGHT - HIT_HEIGHT
 
 ### key setting
 KEY_EFFECT_WIDTH = WIDTH / 4.61
-KEY_EFFECT_HEIGHT = HEIGHT / 30
+KEY_EFFECT_HEIGHT = HEIGHT / 33
 KEY_EFFECT_FIRST_X = PLAY_X + PLAY_LINE
 KEY_EFFECT_SECOND_X = KEY_EFFECT_FIRST_X + KEY_EFFECT_WIDTH + 5
 KEY_EFFECT_THIRD_X = KEY_EFFECT_SECOND_X + KEY_EFFECT_WIDTH + 5
@@ -58,6 +65,7 @@ KEY_EFFECT_Y = HIT_Y + 50
 
 ### font setting
 FONT_Y = (HEIGHT / 12)
+COMBO_COLOR = (80, 40, 140)
 
 
 NOTE_END_Y = HEIGHT
@@ -78,11 +86,6 @@ PERFECT_HIT_LINE = HIT_Y
 GREAT_HIT_LINE = HIT_Y * (0.85)
 GOOD_HIT_LINE = HIT_Y * (0.83)
 BAD_HIT_LINE = HIT_Y * (0.8)
-print("END", HIT_END_LINE)
-print("PERFECT", PERFECT_HIT_LINE)
-print("GREAT", GREAT_HIT_LINE)
-print("GOOD",GOOD_HIT_LINE)
-print("BAD",BAD_HIT_LINE)
 
 ### score setting
 SCORE = 0
@@ -97,6 +100,26 @@ RANK_F = "F"
 
 ### life setting
 LIFE = 100
+
+### cam setting
+mp_drawing = mp.solutions.drawing_utils
+mp_drawing_styles = mp.solutions.drawing_styles
+mp_hands = mp.solutions.hands
+
+# 웹캠, 영상 파일의 경우 이것을 사용하세요.:
+cap = cv2.VideoCapture(0)
+w = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+a = w//3 
+hi = h//3
+
+hands = mp_hands.Hands(
+    model_complexity=0,
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5)
+
+fourcc = cv2.VideoWriter_fourcc(*'DIVX')
+out = cv2.VideoWriter('output.avi', fourcc, 30.0, (int(w), int(h)))
 
 
 class Game:
@@ -162,14 +185,25 @@ class Game:
         self.playing = True
 
         while self.playing:
+            success, self.image = cap.read()
+            if not success:
+                print("카메라를 찾을 수 없습니다.")
+                # 동영상을 불러올 경우는 'continue' 대신 'break'를 사용합니다.
+                continue
+            self.image.flags.writeable = False
+            # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            # self.image = cv2.flip(self.image,1)
+            self.results = hands.process(self.image)
+
             self.Time = time.time() - self.start_time
             self.combo_time = self.Time + 1
             self.dt = self.clock.tick(FPS)
             self.events()
             self.frame_set()
-            self.update()
+            # self.update()
             self.random_create_note()
             self.draw()
+            # pg.display.update(self.image)
             pg.display.flip() ## 화면 전체를 업데이트
 
     def frame_set(self):
@@ -197,10 +231,13 @@ class Game:
 
     def draw(self):
         self.draw_screen()
+        self.draw_cam()
+        self.draw_play_line()
         # self.draw_key()
+        self.draw_effect()
         self.draw_note()
         self.draw_rate()
-        pg.display.update() ## 화면 일부 또는 전체를 업데이트
+        # pg.display.update() ## 화면 일부 또는 전체를 업데이트
 
     def draw_screen(self):        
         # 플레이 전체 화면
@@ -208,32 +245,65 @@ class Game:
 
         # 플레이 화면 구성
         pg.draw.rect(self.screen, BLACK, (PLAY_X, HIT_Y + 40 + HIT_HEIGHT + 30, PLAY_WIDTH, HEIGHT / 2))
+
+    def draw_play_line(self):
         # 노트 판정 선
         pg.draw.rect(self.screen, HIT_COLOR, (PLAY_X, HIT_Y + 40, PLAY_WIDTH, HIT_HEIGHT + 30), 0)
 
         # 플레이 양측 끝 선
-        pg.draw.rect(self.screen, PLAY_COLOR, (PLAY_X, PLAY_Y, PLAY_WIDTH, PLAY_HEIGHT), HIT_LINE) 
+        pg.draw.rect(self.screen, PLAY_COLOR, (PLAY_X, PLAY_Y, PLAY_WIDTH, PLAY_HEIGHT), HIT_LINE)
+
+        # 3분할 선
+        pg.draw.line(self.screen, GRAY, [NOTE_FIRST_X + NOTE_WIDTH + 1, 0],[NOTE_FIRST_X + NOTE_WIDTH + 1, HEIGHT], 1)
+        pg.draw.line(self.screen, GRAY, [NOTE_SECOND_X + NOTE_WIDTH + 1, 0],[NOTE_SECOND_X + NOTE_WIDTH + 1, HEIGHT], 1)
 
 
-        # [A, S, D] 키 입력시 화면 구성
-        # 색상 미 입력시 자동으로 흰색 직사각형 생성
-        # 키 입력시 이펙트 생성
-        for i in range(5):
-            i += 1
-            pg.draw.rect(self.screen, (130 - (6 * i), 105 - (15 * i), 235 - (25 * i)), (KEY_EFFECT_FIRST_X, KEY_EFFECT_Y + 100 - (HEIGHT / 30) * i * self.keys[0], KEY_EFFECT_WIDTH, KEY_EFFECT_HEIGHT / i * self.keys[0]))
-        
-        for i in range(5):
-            i += 1
-            pg.draw.rect(self.screen, (130 - (6 * i), 105 - (15 * i), 235 - (25 * i)), (KEY_EFFECT_SECOND_X, KEY_EFFECT_Y + 100 - (HEIGHT / 30) * i * self.keys[1], KEY_EFFECT_WIDTH, KEY_EFFECT_HEIGHT / i * self.keys[1]))
-        
-        for i in range(5):
-            i += 1
-            pg.draw.rect(self.screen, (130 - (6 * i), 105 - (15 * i), 235 - (25 * i)), (KEY_EFFECT_THIRD_X, KEY_EFFECT_Y + 100 - (HEIGHT / 30) * i * self.keys[2], KEY_EFFECT_WIDTH, KEY_EFFECT_HEIGHT / i * self.keys[2]))
+
 
         # 키 입력 선
         # pg.draw.rect(self.screen, BLACK, (PLAY_X, HIT_Y, PLAY_WIDTH, HEIGHT / 2))
         # pg.draw.rect(self.screen, WHITE, (PLAY_X, HIT_Y, PLAY_WIDTH, HEIGHT / 2), HIT_LINE)
 
+    def draw_effect(self):
+                # [A, S, D] 키 입력시 화면 구성
+        # 색상 미 입력시 자동으로 흰색 직사각형 생성
+        # 키 입력시 이펙트 생성
+        for i in range(5):
+            i += 1
+            pg.draw.rect(self.screen, (115 - (6 * i), 90 - (15 * i), 220 - (25 * i)), (KEY_EFFECT_FIRST_X, KEY_EFFECT_Y + 110 - (HEIGHT / 25) * i * self.keys[0], KEY_EFFECT_WIDTH, KEY_EFFECT_HEIGHT / i * self.keys[0]))
+        
+        for i in range(5):
+            i += 1
+            pg.draw.rect(self.screen, (115 - (6 * i), 90 - (15 * i), 220 - (25 * i)), (KEY_EFFECT_SECOND_X, KEY_EFFECT_Y + 110 - (HEIGHT / 25) * i * self.keys[1], KEY_EFFECT_WIDTH, KEY_EFFECT_HEIGHT / i * self.keys[1]))
+        
+        for i in range(5):
+            i += 1
+            pg.draw.rect(self.screen, (115 - (6 * i), 90 - (15 * i), 220 - (25 * i)), (KEY_EFFECT_THIRD_X, KEY_EFFECT_Y + 110 - (HEIGHT / 25) * i * self.keys[2], KEY_EFFECT_WIDTH, KEY_EFFECT_HEIGHT / i * self.keys[2]))
+
+    def draw_cam(self):
+            # self.image.flags.writeable = False
+            # # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            # self.image = cv2.flip(self.image,1)
+            # self.results = hands.process(self.image)
+            self.image = cv2.cvtColor(self.image,cv2.COLOR_BGR2RGB)
+            self.image = pg.surfarray.make_surface(self.image)
+            self.image = pg.transform.rotate(self.image,-90)
+
+            # self.image.flags.writeable = True
+            # if self.results.multi_hand_landmarks:
+            #     for hand_landmarks in self.results.multi_hand_landmarks:
+            #         mp_drawing.draw_landmarks(
+            #             self.image,
+            #             hand_landmarks,
+            #             mp_hands.HAND_CONNECTIONS,
+            #             mp_drawing_styles.get_default_hand_landmarks_style(),
+            #             mp_drawing_styles.get_default_hand_connections_style())
+            # out.write(self.image)
+            self.screen.blit(self.image,(500, 500))
+            #보기 편하게 이미지를 좌우 반전합니다.
+            
+            # cv2.imshow(cv2.flip(self.image, 1))
+            # out.write(self.image)
 
     # 노트의 Y축 좌표 값과 생성 시간을 각 노트별 배열에 추가
     def set_note(self, note):
@@ -252,7 +322,7 @@ class Game:
             self.note3.append([self.noteY, self.note_time])
 
     def random_create_note(self):
-        if self.Time > 0.5 * self.create_note_time: # 노트 생성 주기
+        if self.Time > 1.5 * self.create_note_time: # 노트 생성 주기
             self.create_note_time += 1
             while self.randnote == self.temp_randnote:
                 self.randnote = random.randint(1,3)
@@ -336,7 +406,7 @@ class Game:
     def draw_rate(self):
         self.ingame_font_combo = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int((WIDTH / 38) * self.combo_effect2))
         self.ingame_font_miss = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int((WIDTH / 38) * self.miss_animation))
-        self.combo_text = self.ingame_font_combo.render(str(self.combo), False, WHITE)
+        self.combo_text = self.ingame_font_combo.render(str(self.combo), False, COMBO_COLOR)
         self.miss_text = self.ingame_font_rate.render(str(self.last_combo), False, RED)
         # self.perfect_text = self.ingame_font_rate.render(str(PERFECT), False, BLUE)
         # # self.perfect_text = pg.transform.scale(self.perfect_text, (int(WIDTH / 110 * len(self.rate) * self.combo_effect2), int(WIDTH / 58 * self.combo_effect1 * self.combo_effect2)))
@@ -510,11 +580,51 @@ class Game:
 
         
 
-    def update(self):
-        # self.all_sprites.update()
-        self.game_tick = pg.time.get_ticks() - self.start_tick
+    # def update(self):
+    #     # self.all_sprites.update()
+    #     self.game_tick = pg.time.get_ticks() - self.start_tick
 
     def events(self):
+        if self.results.multi_hand_landmarks is not None:
+
+            for res in self.results.multi_hand_landmarks:   
+                for j, lm in enumerate(res.landmark):
+                    if j==0:
+                        # print((lm.x*w, lm.y*h, lm.z))
+                        if 0 <= lm.x*w and a >= lm.x*w:
+                            if hi * 2 <= lm.y*h:
+                                self.keyset[2] = 1
+                                if len(self.note3) > 0:
+                                    self.rating_data()
+                                    if self.note3[0][0] > BAD_HIT_LINE:
+                                        self.rating(3)
+                            else:
+                                self.keyset[2] = 0
+
+                        elif a <lm.x*w and 2 * a >= lm.x*w:
+                            if hi * 2 <= lm.y*h:
+                                self.keyset[1] = 1
+                                if len(self.note2) > 0:
+                                    self.rating_data()
+                                    if self.note2[0][0] > BAD_HIT_LINE:
+                                        self.rating(2)
+                            else:
+                                self.keyset[1] = 0
+                        else:
+                            if hi * 2 <= lm.y*h:
+                                self.keyset[0] = 1
+                                if len(self.note1) > 0:
+                                    self.rating_data()
+                                    if self.note1[0][0] > BAD_HIT_LINE:
+                                        self.rating(1)
+                            else:
+                                self.keyset[0] = 0
+        # else:
+        #     self.keyset[0], self.keyset[1], self.keyset[2] = 0, 0, 0
+
+
+
+
         for event in pg.event.get():
             # 게임 종료
             if event.type == pg.QUIT:
