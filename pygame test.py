@@ -118,8 +118,9 @@ hands = mp_hands.Hands(
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5)
 
-fourcc = cv2.VideoWriter_fourcc(*'DIVX')
-out = cv2.VideoWriter('output.avi', fourcc, 30.0, (int(w), int(h)))
+# 영상 제작
+# fourcc = cv2.VideoWriter_fourcc(*'DIVX')
+# out = cv2.VideoWriter('output.avi', fourcc, 30.0, (int(w), int(h)))
 
 
 class Game:
