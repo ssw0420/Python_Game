@@ -49,7 +49,7 @@ HIT_COLOR = (50, 50, 50)
 
 ### font setting
 
-COMBO_COLOR = (80, 40, 140)
+COMBO_COLOR = (40, 20, 60)
 
 
 
@@ -226,9 +226,9 @@ class Game:
         self.FontPath = os.path.join(self.Cpath,"font")
 
         ### font setting
-        self.ingame_font_rate = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 23))
-        self.ingame_font_combo = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 38))
-        self.ingame_font_miss = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 38))
+        self.ingame_font_rate = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 20))
+        self.ingame_font_combo = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 34))
+        self.ingame_font_miss = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 34))
         self.ingame_font_score = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 48))
         self.ingame_font_score_eng = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 48))
         self.ingame_font_life_eng = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 48))
@@ -376,8 +376,8 @@ class Game:
             # out.write(self.image)
 
     def draw_score(self):
-        self.score_box = pg.draw.rect(self.screen, BLACK, (self.play_x + self.play_width + 10, 255, 310, 500))
-        self.score_box_edge = pg.draw.rect(self.screen, PLAY_COLOR, (self.play_x + self.play_width + 10, 255, 310, 500), 2)
+        self.score_box = pg.draw.rect(self.screen, BLACK, (self.play_x + self.play_width + 10, 230, 310, 330))
+        self.score_box_edge = pg.draw.rect(self.screen, PLAY_COLOR, (self.play_x + self.play_width + 10, 230, 310, 330), 2)
         self.score_text = self.ingame_font_score.render(str(self.score), False, WHITE)
         self.score_text_eng = self.ingame_font_score_eng.render("SCORE", False, WHITE)
         self.screen.blit(self.score_text_eng, (self.play_x + self.play_width + 170 - self.score_text_eng.get_width() / 2, 280 - self.score_text_eng.get_height() / 2))
