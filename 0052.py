@@ -110,14 +110,77 @@ SCORE = 0
 # 영상 제작
 # fourcc = cv2.VideoWriter_fourcc(*'DIVX')
 # out = cv2.VideoWriter('output.avi', fourcc, 30.0, (int(w), int(h)))
-
+    
 
 class Game:
     # 프로그램 실행
     def __init__(self):
+        mp_drawing = mp.solutions.drawing_utils
+        mp_drawing_styles = mp.solutions.drawing_styles
+        mp_hands = mp.solutions.hands
+
+        # 웹캠, 영상 파일의 경우 이것을 사용하세요.:
+        cap = cv2.VideoCapture(0)
+        w = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        a = w//3 
+        hi = h//3
+        with mp_hands.Hands(
+            model_complexity=0,
+            min_detection_confidence=0.5, # 최소_탐지_신뢰도
+            min_tracking_confidence=0.5   # 최소_추적_신뢰도
+            ) as hands:
+            while cap.isOpened():
+                success, image = cap.read()
+                if not success:
+                    print("카메라를 찾을 수 없습니다.")
+                    # 동영상을 불러올 경우는 'continue' 대신 'break'를 사용합니다.
+                    continue
+                
+                # 필요에 따라 성능 향상을 위해 이미지 작성을 불가능함으로 기본 설정합니다.
+                image.flags.writeable = False
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                results = hands.process(image)
+
+                if results.multi_hand_landmarks is not None:
+
+                        for res in results.multi_hand_landmarks:   
+                            for j, lm in enumerate(res.landmark):
+                                if j==0 :
+                                    # print((lm.x*w, lm.y*h, lm.z))
+                                    if 0 <= lm.x*w and a >= lm.x*w:
+                                        if hi * 2 <= lm.y*h:
+                                            self.__twoinit__()
+                                            self.run()      
+
+                # 이미지에 손 주석을 그립니다.
+                image.flags.writeable = True
+                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+                if results.multi_hand_landmarks:
+                    for hand_landmarks in results.multi_hand_landmarks:
+                        mp_drawing.draw_landmarks(
+                            image,
+                            hand_landmarks,
+                            mp_hands.HAND_CONNECTIONS,
+                            mp_drawing_styles.get_default_hand_landmarks_style(),
+                            mp_drawing_styles.get_default_hand_connections_style())
+
+                # 선 긋기
+                cv2.line(image, (int(a), 0), (int(a), int(h)), (115, 115, 115), 2)
+                cv2.line(image, (int(2 * a), 0), (int(2 * a), int(h)), (115, 115, 115), 2)
+                cv2.line(image, (0, int(hi * 2)), (int(w), int(hi * 2)), (115, 115, 115), 2)
+
+                #보기 편하게 이미지를 좌우 반전합니다.
+                cv2.imshow('MediaPipe Hands', cv2.flip(image, 1))
+                if cv2.waitKey(5) & 0xFF == 27:
+                    break
+
+        cap.release()
+        
+    def __twoinit__(self):
         pg.init()
         pg.font.init()
-        pg.mixer.init() # 음악 사용하는 경우
+        # pg.mixer.init() # 음악 사용하는 경우
         pg.display.set_caption(TITLE) # 제목 표시
         self.screen = pg.display.set_mode((0, 0), pg.FULLSCREEN) # 화면 표시
         # self.screen_mode = 0 #screen mode (0: logo, 1: logo2, 2: main, 3: stage select, 4: play, 5: score)
@@ -146,7 +209,7 @@ class Game:
         self.note_third_x = self.note_second_x + self.note_width + 3
         print(self.note_third_x)
 
-        self.hit_y = (self.height / 12) * 10
+        self.hit_y = (self.play_height / 12) * 10
         print(self.hit_y)
         self.hit_height = self.note_height + 30
         print(self.hit_height)
@@ -174,15 +237,15 @@ class Game:
         print(self.note_end_y)
 
         self.hit_end_line = self.hit_y + 40 + self.hit_height + 30
-        print(self.hit_end_line)
-        self.perfect_hit_line = self.hit_y
-        print(self.perfect_hit_line)
+        print("엔드라인",self.hit_end_line)
+        self.perfect_hit_line = self.hit_y * (0.9)
+        print("최고라인",self.perfect_hit_line)
         self.great_hit_line = self.hit_y * (0.85)
-        print(self.great_hit_line)
+        print("좋음라인",self.great_hit_line)
         self.good_hit_line = self.hit_y * (0.83)
-        print(self.good_hit_line)
+        print("굿라인",self.good_hit_line)
         self.bad_hit_line = self.hit_y * (0.8)
-        print(self.bad_hit_line)
+        print("배드라인",self.bad_hit_line)
         
         self.clock = pg.time.Clock()        #FPS timer
         self.start_tick = 0     #game timer
@@ -214,6 +277,12 @@ class Game:
         self.create_note_time = 0
         self.randnote = 0
         self.temp_randnote = 0
+        
+        ### score setting
+        self.score = 0
+
+        ### life setting
+        self.life = 10
 
         ### path setting
         self.Cpath = os.path.dirname(__file__)
@@ -221,6 +290,9 @@ class Game:
         self.ingame_font_rate = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 23))
         self.ingame_font_combo = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 38))
         self.ingame_font_miss = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 38))
+        self.ingame_font_score = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 48))
+        self.ingame_font_score_eng = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 48))
+        self.ingame_font_life_eng = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 48))
 
         ### background setting
         self.background = pg.Surface((0, 0), pg.FULLSCREEN)           #white background
@@ -242,6 +314,8 @@ class Game:
         # 동영상 크기 변환
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1710) # 가로
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1107) # 세로
+        self.cap.set(cv2.CAP_PROP_FPS, FPS)
+        # self.cap.set(cv2.CAP_PROP_FRAME_, pg.FULLSCREEN)
 
         # 변환된 동영상 크기 정보
         self.w = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
@@ -257,6 +331,40 @@ class Game:
         # self.song_select = 1    #select song
         # self.load_date()        #data loading
         # self.new()
+    # def pause():
+    #     loop = 1
+    #     while loop:
+    #         for event in pg.event.get():
+    #             if event.type == pg.QUIT:
+    #                 loop = 0
+    #             if event.type == pg.KEYDOWN:
+    #                 if event.key == pg.K_ESCAPE:
+    #                     loop = 0
+    #                 if event.key == pg.K_SPACE:
+    #                     loop = 0
+    #         pg.display.update()
+    #         # screen.fill((0, 0, 0))
+    def start_screen(self):
+        while self.cap.isOpened():
+            success, image = self.cap.read()
+            if not success:
+                print("카메라를 찾을 수 없습니다.")
+                # 동영상을 불러올 경우는 'continue' 대신 'break'를 사용합니다.
+                continue
+            image.flags.writeable = False
+            results = self.hands.process(image)
+
+            if results.multi_hand_landmarks is not None:
+                for res in results.multi_hand_landmarks:
+                    for j, lm in enumerate(res.landmark):
+                        if j == 13:
+                            # print((lm.x*w, lm.y*h, lm.z))  
+                            if self.play_x <= lm.x*self.w and (self.note_second_x + 1) >= lm.x * self.w: #오른쪽 
+                                if self.hi * 2 <= lm.y*self.h:
+                                    self.__twoinit__()
+                                    self.run()
+
+
 
     def run(self):
         self.playing = True
@@ -271,9 +379,10 @@ class Game:
             self.results = self.hands.process(self.image)
             # self.image = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
             # self.image = cv2.flip(self.image,1)
-            cv2.line(self.image, (int(self.a), 0), (int(self.a), int(self.h)), (0, 0, 0), 2)
-            cv2.line(self.image, (int(2 * self.a), 0), (int(2 * self.a), int(self.h)), (0, 0, 0), 2)
-            cv2.line(self.image, (0, int(self.hi * 2)), (int(self.w), int(self.hi * 2)), (0, 0, 0), 2)
+            # cv2.line(self.image, (int(self.a), 0), (int(self.a), int(self.h)), (255, 0, 0), 2)
+            # cv2.line(self.image, (int(2 * self.a), 0), (int(2 * self.a), int(self.h)), (0, 255, 0), 2)
+            # cv2.line(self.image, (0, int(self.hi * 2)), (int(self.w), int(self.hi * 2)), (0, 0, 0), 2) # 판정선.
+            
             self.Time = time.time() - self.start_time
             self.combo_time = self.Time + 1
             self.dt = self.clock.tick(FPS)
@@ -316,6 +425,8 @@ class Game:
         self.draw_effect()
         self.draw_note()
         self.draw_rate()
+        self.draw_score()
+        self.draw_life()
         # pg.display.update() ## 화면 일부 또는 전체를 업데이트
 
     def draw_screen(self):        
@@ -329,7 +440,8 @@ class Game:
 
     def draw_play_line(self):
         # 노트 판정 선
-        pg.draw.rect(self.screen, HIT_COLOR, (self.play_x, self.hit_y + 40, self.play_width, self.hit_height + 30), 0)
+        # pg.draw.rect(self.screen, HIT_COLOR, (self.play_x, self.hit_y + 40, self.play_width, self.hit_height + 30), 0)
+        pg.draw.rect(self.screen, HIT_COLOR, (self.play_x, int(self.hi * 2), self.play_width, self.hit_height + 30), 0)
 
         # 플레이 양측 끝 선
         pg.draw.rect(self.screen, PLAY_COLOR, (self.play_x, self.play_y, self.play_width, self.play_height), self.hit_line)
@@ -338,7 +450,9 @@ class Game:
         pg.draw.line(self.screen, GRAY, [self.note_first_x + self.note_width + 1, 0],[self.note_first_x + self.note_width + 1, self.height], 1)
         pg.draw.line(self.screen, GRAY, [self.note_second_x + self.note_width + 1, 0],[self.note_second_x + self.note_width + 1, self.height], 1)
 
-
+        # cv2.line(self.image, (int(self.a), 0), (int(self.a), int(self.h)), (0, 0, 0), 2)
+        # cv2.line(self.image, (int(2 * self.a), 0), (int(2 * self.a), int(self.h)), (0, 0, 0), 2)
+        # cv2.line(self.image, (0, int(self.hi * 2)), (int(self.w), int(self.hi * 2)), (0, 0, 0), 2)
 
 
         # 키 입력 선
@@ -387,6 +501,21 @@ class Game:
             # cv2.imshow(cv2.flip(self.image, 1))
             # out.write(self.image)
 
+    def draw_score(self):
+        self.score_box = pg.draw.rect(self.screen, BLACK, (self.play_x + self.play_width + 10, 230, 310, 330))
+        self.score_box_edge = pg.draw.rect(self.screen, PLAY_COLOR, (self.play_x + self.play_width + 10, 230, 310, 330), 2)
+        self.score_text = self.ingame_font_score.render(str(self.score), False, WHITE)
+        self.score_text_eng = self.ingame_font_score_eng.render("SCORE", False, WHITE)
+        self.screen.blit(self.score_text_eng, (self.play_x + self.play_width + 170 - self.score_text_eng.get_width() / 2, 280 - self.score_text_eng.get_height() / 2))
+        self.screen.blit(self.score_text, (self.play_x + self.play_width + 240 - self.score_text.get_width() / 2, 350 - self.score_text.get_height() / 2))
+        
+    def draw_life(self):
+        self.life_text_eng = self.ingame_font_life_eng.render("LIFE", False, WHITE)
+        self.screen.blit(self.life_text_eng, (self.play_x + self.play_width + 170 - self.life_text_eng.get_width() / 2, 450 - self.life_text_eng.get_height() / 2))
+        for i in range (self.life):
+            self.life_box = pg.draw.rect(self.screen, (245 - (i * 18), 35 + (i * 5), 75 + (i * 8)), (self.play_x + self.play_width + 45 + (i * 25), 500, 25, 30))
+        pg.display.update(self.life_box)
+
     # 노트의 Y축 좌표 값과 생성 시간을 각 노트별 배열에 추가
     def set_note(self, note):
         if note == 1:
@@ -431,6 +560,7 @@ class Game:
                 self.combo_effect2 = 1.3
                 self.rate = MISS
                 self.miss_count += 1
+                self.life -= 1
                 self.note1.remove(note_data)
 
         for note_data in self.note2:
@@ -448,6 +578,7 @@ class Game:
                 self.combo_effect2 = 1.3
                 self.rate = MISS
                 self.miss_count += 1
+                self.life -= 1
                 self.note2.remove(note_data)
 
         for note_data in self.note3:
@@ -463,6 +594,7 @@ class Game:
                 self.combo_effect2 = 1.3
                 self.rate = MISS
                 self.miss_count += 1
+                self.life -= 1
                 self.note3.remove(note_data)
 
 # 임시 잠금
@@ -486,8 +618,8 @@ class Game:
 
 
     def draw_rate(self):
-        self.ingame_font_combo = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int((self.width / 30) * self.combo_effect2))
-        self.ingame_font_miss = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int((self.width / 30) * self.miss_animation))
+        self.ingame_font_combo = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int((self.width / 38) * self.combo_effect2))
+        self.ingame_font_miss = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int((self.width / 38) * self.miss_animation))
         self.combo_text = self.ingame_font_combo.render(str(self.combo), False, COMBO_COLOR)
         self.miss_text = self.ingame_font_rate.render(str(self.last_combo), False, RED)
         # self.perfect_text = self.ingame_font_rate.render(str(PERFECT), False, BLUE)
@@ -502,9 +634,9 @@ class Game:
         # self.miss_text = pg.transform.scale(self.miss_text, (int(self.width / 110 * len(self.rate) * self.combo_effect2), int(self.width / 58 * self.combo_effect1 * self.combo_effect2)))
         self.rate_text = self.ingame_font_rate.render(str(self.rate), False, WHITE)
         if (self.rate == PERFECT):
-            self.rate_text = self.ingame_font_rate.render(str(PERFECT), False, BLUE)
+            self.rate_text = self.ingame_font_rate.render(str(PERFECT), False, BLUE)     
         elif (self.rate == GREAT):
-            self.rate_text = self.ingame_font_rate.render(str(GREAT), False, GREEN)
+            self.rate_text = self.ingame_font_rate.render(str(GREAT),False, GREEN)
         elif (self.rate == GOOD):
             self.rate_text = self.ingame_font_rate.render(str(GOOD), False, YELLOW)
         elif (self.rate == BAD):
@@ -533,6 +665,7 @@ class Game:
                 self.rate = BAD
                 self.miss_count = 0
                 self.combo += 1
+                self.score += (self.combo + 10)
                 del self.note1[0]
                 
 
@@ -543,6 +676,7 @@ class Game:
                 self.rate = GOOD
                 self.miss_count = 0
                 self.combo += 1
+                self.score += (self.combo + 20)
                 del self.note1[0]
 
             elif self.rate_data[n - 1] >= self.great_hit_line and self.rate_data[n - 1] < self.perfect_hit_line:
@@ -552,6 +686,7 @@ class Game:
                 self.rate = GREAT
                 self.miss_count = 0
                 self.combo += 1
+                self.score += (self.combo + 50)
                 del self.note1[0]
 
             
@@ -562,6 +697,7 @@ class Game:
                 self.rate = PERFECT
                 self.miss_count = 0
                 self.combo += 1
+                self.score += (self.combo + 100)
                 del self.note1[0]
 
         elif n == 2:
@@ -572,6 +708,7 @@ class Game:
                 self.rate = BAD
                 self.miss_count = 0
                 self.combo += 1
+                self.score += (self.combo + 10)
                 del self.note2[0]
                 
 
@@ -582,6 +719,7 @@ class Game:
                 self.rate = GOOD
                 self.miss_count = 0
                 self.combo += 1
+                self.score += (self.combo + 20)
                 del self.note2[0]
 
             elif self.rate_data[n - 1] >= self.great_hit_line and self.rate_data[n - 1] < self.perfect_hit_line:
@@ -591,6 +729,7 @@ class Game:
                 self.rate = GREAT
                 self.miss_count = 0
                 self.combo += 1
+                self.score += (self.combo + 50)
                 del self.note2[0]
 
             
@@ -601,6 +740,7 @@ class Game:
                 self.rate = PERFECT
                 self.miss_count = 0
                 self.combo += 1
+                self.score += (self.combo + 100)
                 del self.note2[0]
 
         elif n == 3:
@@ -611,6 +751,7 @@ class Game:
                 self.rate = BAD
                 self.miss_count = 0
                 self.combo += 1
+                self.score += (self.combo + 10)
                 del self.note3[0]
                 
 
@@ -621,6 +762,7 @@ class Game:
                 self.rate = GOOD
                 self.miss_count = 0
                 self.combo += 1
+                self.score += (self.combo + 20)
                 del self.note3[0]
 
             elif self.rate_data[n - 1] >= self.great_hit_line and self.rate_data[n - 1] < self.perfect_hit_line:
@@ -630,6 +772,7 @@ class Game:
                 self.rate = GREAT
                 self.miss_count = 0
                 self.combo += 1
+                self.score += (self.combo + 50)
                 del self.note3[0]
 
             
@@ -640,6 +783,7 @@ class Game:
                 self.rate = PERFECT
                 self.miss_count = 0
                 self.combo += 1
+                self.score += (self.combo + 100)
                 del self.note3[0]
             
 
@@ -668,12 +812,11 @@ class Game:
 
     def events(self):
         if self.results.multi_hand_landmarks is not None:
-
-            for res in self.results.multi_hand_landmarks:   
+            for res in self.results.multi_hand_landmarks:
                 for j, lm in enumerate(res.landmark):
-                    if j==0 or j == 17:
-                        # print((lm.x*w, lm.y*h, lm.z))
-                        if 0 <= lm.x*self.w and self.a >= lm.x*self.w:
+                    if j == 13:
+                        # print((lm.x*w, lm.y*h, lm.z))  
+                        if self.play_x <= lm.x*self.w and (self.note_second_x + 1) >= lm.x * self.w: #오른쪽 
                             if self.hi * 2 <= lm.y*self.h:
                                 self.keyset[2] = 1
                                 if len(self.note3) > 0:
@@ -682,8 +825,7 @@ class Game:
                                         self.rating(3)
                             else:
                                 self.keyset[2] = 0
-
-                        elif self.a <lm.x*self.w and 2 * self.a >= lm.x*self.w: # b
+                        elif (self.note_second_x - 1) < lm.x * self.w and (self.note_second_x + self.note_width + 1) >= lm.x * self.w: # 중앙
                             if self.hi * 2 <= lm.y*self.h:
                                 self.keyset[1] = 1
                                 if len(self.note2) > 0:
@@ -692,7 +834,7 @@ class Game:
                                         self.rating(2)
                             else:
                                 self.keyset[1] = 0
-                        else: # a
+                        elif (self.note_second_x + self.note_width + 1) < lm.x * self.w and (self.play_width + self.note_width + 1) >= lm.x * self.w: # 왼쪽
                             if self.hi * 2 <= lm.y*self.h:
                                 self.keyset[0] = 1
                                 if len(self.note1) > 0:
@@ -706,8 +848,6 @@ class Game:
         #     self.keyset[0], self.keyset[1], self.keyset[2] = 0, 0, 0
 
 
-
-
         for event in pg.event.get():
             # 게임 종료
             if event.type == pg.QUIT:
@@ -717,7 +857,7 @@ class Game:
             # 키 입력
             if event.type == pg.KEYDOWN:
                 if event.key == pg.K_ESCAPE:
-                    if self.playing:
+                    if self.playing != 0:
                         self.playing, self.running = False, False
                 if event.key == pg.K_a:
                     self.keyset[0] = 1
@@ -737,6 +877,8 @@ class Game:
                         self.rating_data()
                         if self.note3[0][0] > self.bad_hit_line:
                             self.rating(3)
+                # if event.key == pg.K_SPACE:
+                #     pg.pa
 
             if event.type == pg.KEYUP:
                 if event.key == pg.K_a:
@@ -746,9 +888,13 @@ class Game:
                 if event.key == pg.K_d:
                     self.keyset[2] = 0
 
+        if self.life == 0:
+            pg.quit()
+
 game = Game()
 
 while game.running:
-    game.run()
+    # game.run()
+    game.start_screen()
 
 pg.quit()

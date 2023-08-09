@@ -13,13 +13,13 @@ HEIGHT = WIDTH * (9 / 16)
 FPS = 60
 
 ### color setting
-WHITE = (255, 255, 255)
+WHITE = (0, 0, 0)
 GREEN = (50, 205, 50)
 RED = (246, 36, 74)
 BLUE = (32, 105, 246)
 YELLOW = (242, 182, 80)
 GRAY = (115, 115, 115)
-BLACK = (0, 0, 0)
+BLACK = (255, 255, 255)
 # ALPHA_MAX = 255
 
 ### note setting

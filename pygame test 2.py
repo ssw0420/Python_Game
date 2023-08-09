@@ -225,7 +225,7 @@ class Game:
         # 키 입력시 이펙트 생성
         for i in range(4):
             i += 1
-            pg.draw.rect(self.screen, (130 - (6 * i), 105 - (2 * i), 235 - (25 * i)), (KEY_EFFECT_FIRST_X *  self.keys[0], KEY_EFFECT_Y + 90 - (HEIGHT / 15) * i * self.keys[0], KEY_EFFECT_WIDTH , KEY_EFFECT_HEIGHT / i * self.keys[0]))
+            pg.draw.rect(self.screen, (130 - (6 * i), 105 - (2 * i), 235 - (25 * i)), (KEY_EFFECT_FIRST_X, KEY_EFFECT_Y + 90 - (HEIGHT / 15) * i * self.keys[0], KEY_EFFECT_WIDTH , KEY_EFFECT_HEIGHT / i * self.keys[0]))
         
         for i in range(4):
             i += 1

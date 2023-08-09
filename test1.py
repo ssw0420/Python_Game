@@ -14,8 +14,8 @@ h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
 a = w//3 
 hi = h//3
 
-fourcc = cv2.VideoWriter_fourcc(*'DIVX')
-out = cv2.VideoWriter('output.avi', fourcc, 30.0, (int(w), int(h)))
+# fourcc = cv2.VideoWriter_fourcc(*'DIVX')
+# out = cv2.VideoWriter('output.avi', fourcc, 30.0, (int(w), int(h)))
 
 # hands = mp_hands.Hands(
 #     model_complexity=0,

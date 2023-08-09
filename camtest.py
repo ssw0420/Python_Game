@@ -24,15 +24,15 @@ FRAME_INTERVAL = 16
 ### color setting
 WHITE = (255, 255, 255)
 GREEN = (50, 205, 50)
-RED = (246, 36, 74)
-BLUE = (32, 105, 246)
-YELLOW = (242, 182, 80)
+RED = (245, 35, 75)
+BLUE = (30, 105, 245)
+YELLOW = (240, 180, 80)
 GRAY = (115, 115, 115)
 BLACK = (0, 0, 0)
 # ALPHA_MAX = 255
 
 ### play setting
-PLAY_COLOR = (130, 105, 236)
+PLAY_COLOR = (130, 105, 235)
 
 
 ### note setting
@@ -51,11 +51,8 @@ HIT_COLOR = (50, 50, 50)
 
 COMBO_COLOR = (40, 20, 60)
 
-
-
-
 ### speed, time setting
-SPEED = 5
+SPEED = 5.4
 
 ### rating setting
 PERFECT = "PERFECT"
@@ -173,15 +170,15 @@ class Game:
         self.note_end_y = self.height
         print(self.note_end_y)
 
-        self.hit_end_line = self.hit_y + 40 + self.hit_height + 30
+        self.hit_end_line = int(self.hit_y + 40 + self.hit_height + 30)
         print(self.hit_end_line)
-        self.perfect_hit_line = self.hit_y
+        self.perfect_hit_line = int(self.hit_y)
         print(self.perfect_hit_line)
-        self.great_hit_line = self.hit_y * (0.85)
+        self.great_hit_line = int(self.hit_y * (0.85))
         print(self.great_hit_line)
-        self.good_hit_line = self.hit_y * (0.83)
+        self.good_hit_line = int(self.hit_y * (0.83))
         print(self.good_hit_line)
-        self.bad_hit_line = self.hit_y * (0.8)
+        self.bad_hit_line = int(self.hit_y * (0.8))
         print(self.bad_hit_line)
         
         self.clock = pg.time.Clock()        #FPS timer
@@ -226,18 +223,27 @@ class Game:
         self.FontPath = os.path.join(self.Cpath,"font")
 
         ### font setting
-        self.ingame_font_rate = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 20))
-        self.ingame_font_combo = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 34))
-        self.ingame_font_miss = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 34))
-        self.ingame_font_score = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 48))
-        self.ingame_font_score_eng = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 48))
-        self.ingame_font_life_eng = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int(self.width / 48))
+        self.ingame_font_rate = pg.font.Font(os.path.join(self.FontPath, "new_font.ttf"), int(self.width / 20))
+        self.ingame_font_combo = pg.font.Font(os.path.join(self.FontPath, "new_font.ttf"), int(self.width / 25))
+        self.ingame_font_miss = pg.font.Font(os.path.join(self.FontPath, "new_font.ttf"), int(self.width / 25))
+        self.ingame_font_score = pg.font.Font(os.path.join(self.FontPath, "new_font.ttf"), int(self.width / 48))
+        self.ingame_font_score_eng = pg.font.Font(os.path.join(self.FontPath, "new_font.ttf"), int(self.width / 48))
+        self.ingame_font_life_eng = pg.font.Font(os.path.join(self.FontPath, "new_font.ttf"), int(self.width / 48))
+
+        ### sound setting
+        self.sound_path = os.path.join(self.Cpath, "sounds")
+        self.hit_sound = pg.mixer.Sound(os.path.join(self.sound_path, "hit_sound.ogg"))
+        self.miss_sound = pg.mixer.Sound(os.path.join(self.sound_path, "miss_sound.ogg"))
+        self.song_sound = pg.mixer.music.load(os.path.join(self.sound_path,"song_sound.mp3"))
 
         ### background setting
         self.background = pg.Surface((0, 0), pg.FULLSCREEN)           #white background
         self.background = self.background.convert()
         self.background.fill(BLACK)
         self.screen.blit(self.background, (0,0))
+
+        ### song setting
+        self.song_sound = pg.mixer.music.play()
 
 
         # self.song_select = 1    #select song
@@ -268,6 +274,7 @@ class Game:
             # self.update()
             self.random_create_note()
             self.draw()
+            # self.play_music()
             # pg.display.update(self.image)
             pg.display.flip() ## 화면 전체를 업데이트
 
@@ -407,8 +414,8 @@ class Game:
             self.note3.append([self.noteY, self.note_time])
 
     def random_create_note(self):
-        if self.Time > 3 and self.Time - 3 > 1.1 * self.create_note_time: # 노트 생성 주기
-            self.create_note_time += 1
+        if self.Time > 3 and self.Time - 3 > 1.03 * self.create_note_time: # 노트 생성 주기
+            self.create_note_time += 0.8
             while self.randnote == self.temp_randnote:
                 self.randnote = random.randint(1,3)
             self.set_note(self.randnote) # 노트 생성
@@ -435,6 +442,7 @@ class Game:
                 self.rate = MISS
                 self.miss_count += 1
                 self.life -= 1
+                # self.miss_sound.play()
                 self.note1.remove(note_data)
 
         for note_data in self.note2:
@@ -453,6 +461,7 @@ class Game:
                 self.rate = MISS
                 self.miss_count += 1
                 self.life -= 1
+                # self.miss_sound.play()
                 self.note2.remove(note_data)
 
         for note_data in self.note3:
@@ -469,6 +478,7 @@ class Game:
                 self.rate = MISS
                 self.miss_count += 1
                 self.life -= 1
+                # self.miss_sound.play()
                 self.note3.remove(note_data)
 
 # 임시 잠금
@@ -492,8 +502,8 @@ class Game:
 
 
     def draw_rate(self):
-        self.ingame_font_combo = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int((self.width / 38) * self.combo_effect2))
-        self.ingame_font_miss = pg.font.Font(os.path.join(self.FontPath, "pdark.ttf"), int((self.width / 38) * self.miss_animation))
+        self.ingame_font_combo = pg.font.Font(os.path.join(self.FontPath, "new_font.ttf"), int((self.width / 38) * self.combo_effect2))
+        self.ingame_font_miss = pg.font.Font(os.path.join(self.FontPath, "new_font.ttf"), int((self.width / 38) * self.miss_animation))
         self.combo_text = self.ingame_font_combo.render(str(self.combo), False, COMBO_COLOR)
         self.miss_text = self.ingame_font_rate.render(str(self.last_combo), False, RED)
         # self.perfect_text = self.ingame_font_rate.render(str(PERFECT), False, BLUE)
@@ -669,6 +679,12 @@ class Game:
         #     self.miss_count = 0
         #     self.combo += 1
 
+    # def play_music(self):
+    #     if self.Time > 3 :
+    #         while pg.mixer.music.get_busy():
+    #             self.clock.tick(1000)
+    #         pg.mixer.music.play(-1)
+
 
     def rating_data(self):
         if len(self.note1) > 0:
@@ -698,16 +714,18 @@ class Game:
                                     self.rating_data()
                                     if self.note3[0][0] > self.bad_hit_line:
                                         self.rating(3)
+                                        # self.hit_sound.play()
                             else:
                                 self.keyset[2] = 0
 
-                        elif a <lm.x*w and 2 * a >= lm.x*w: # b
+                        elif a <lm.x*w and 2 * a >= lm.x*w:
                             if hi * 2 <= lm.y*h:
                                 self.keyset[1] = 1
                                 if len(self.note2) > 0:
                                     self.rating_data()
                                     if self.note2[0][0] > self.bad_hit_line:
                                         self.rating(2)
+                                        # self.hit_sound.play()
                             else:
                                 self.keyset[1] = 0
                         else: # a
@@ -717,6 +735,7 @@ class Game:
                                     self.rating_data()
                                     if self.note1[0][0] > self.bad_hit_line:
                                         self.rating(1)
+                                        # self.hit_sound.play()
                             else:
                                 self.keyset[0] = 0
                     
@@ -743,18 +762,21 @@ class Game:
                         self.rating_data()
                         if self.note1[0][0] > self.bad_hit_line:
                             self.rating(1)
+                            # self.hit_sound.play()
                 if event.key == pg.K_s:
                     self.keyset[1] = 1
                     if len(self.note2) > 0:
                         self.rating_data()
                         if self.note2[0][0] > self.bad_hit_line:
                             self.rating(2)
+                            # self.hit_sound.play()
                 if event.key == pg.K_d:
                     self.keyset[2] = 1
                     if len(self.note3) > 0:
                         self.rating_data()
                         if self.note3[0][0] > self.bad_hit_line:
                             self.rating(3)
+                            # self.hit_sound.play()
 
             if event.type == pg.KEYUP:
                 if event.key == pg.K_a:
