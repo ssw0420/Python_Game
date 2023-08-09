@@ -219,7 +219,7 @@ class Game:
         self.score = 0
 
         ### life setting
-        self.life = 100
+        self.life = 10
 
         ### path setting
         self.Cpath = os.path.dirname(__file__)
@@ -386,7 +386,8 @@ class Game:
     def draw_life(self):
         self.life_text_eng = self.ingame_font_life_eng.render("LIFE", False, WHITE)
         self.screen.blit(self.life_text_eng, (self.play_x + self.play_width + 170 - self.life_text_eng.get_width() / 2, 450 - self.life_text_eng.get_height() / 2))
-        self.life_box = pg.draw.rect(self.screen, LIFE_COLOR, (self.play_x + self.play_width + 30, 550, 50, 30))
+        for i in range (self.life):
+            self.life_box = pg.draw.rect(self.screen, (245 - (i * 18), 35 + (i * 5), 75 + (i * 8)), (self.play_x + self.play_width + 45 + (i * 25), 500, 25, 30))
         pg.display.update(self.life_box)
 
     # 노트의 Y축 좌표 값과 생성 시간을 각 노트별 배열에 추가
@@ -433,6 +434,7 @@ class Game:
                 self.combo_effect2 = 1.3
                 self.rate = MISS
                 self.miss_count += 1
+                self.life -= 1
                 self.note1.remove(note_data)
 
         for note_data in self.note2:
@@ -450,6 +452,7 @@ class Game:
                 self.combo_effect2 = 1.3
                 self.rate = MISS
                 self.miss_count += 1
+                self.life -= 1
                 self.note2.remove(note_data)
 
         for note_data in self.note3:
@@ -465,6 +468,7 @@ class Game:
                 self.combo_effect2 = 1.3
                 self.rate = MISS
                 self.miss_count += 1
+                self.life -= 1
                 self.note3.remove(note_data)
 
 # 임시 잠금
@@ -759,6 +763,9 @@ class Game:
                     self.keyset[1] = 0
                 if event.key == pg.K_d:
                     self.keyset[2] = 0
+
+        if self.life == 0:
+            self.playing, self.running = False, False
 
 game = Game()
 
